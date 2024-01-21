@@ -8,3 +8,5 @@ imutils
 flask
 lapx
 openvino
+onnx
+nvidia-tensorrt
