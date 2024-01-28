@@ -3,6 +3,7 @@ import threading
 
 import cv2
 import imutils
+import torch
 from flask import Flask, request, redirect
 from flask import Response
 
@@ -23,6 +24,19 @@ app = Flask(__name__)
 @app.route("/")
 def index():
     return "This is testing page. It tell you this is working :)"
+
+
+@app.route("/nvidia")
+def nvidia():
+    gpu_info = ""
+
+    if torch.cuda.is_available():
+        gpu_info += "CUDA is available. Showing GPU information:\n"
+        for i in range(torch.cuda.device_count()):
+            gpu = torch.cuda.get_device_properties(i)
+            gpu_info += f"> GPU {i} - Brand: {gpu.name}\n"
+
+    return f"\n{gpu_info}\n"
 
 
 @app.route("/raw")

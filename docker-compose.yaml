@@ -5,7 +5,7 @@ services:
     image: sp_ai
     container_name: sp_ai
     ports:
-      - "80:80"
+      - "2121:80"
     runtime: nvidia
     deploy:
       resources:
