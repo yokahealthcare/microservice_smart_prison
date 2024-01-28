@@ -8,7 +8,7 @@ from flask import Response
 
 import fight_module
 
-YOLO_MODEL = "model/yolo/yolov8n-pose.engine"
+YOLO_MODEL = "model/yolo/yolov8n-pose.pt"
 FIGHT_MODEL = "model/fight/fight-model.pth"
 
 # initialize the output frame and a lock used to ensure thread-safe
@@ -191,4 +191,11 @@ def generate():
 
 # check to see if this is the main thread of execution
 if __name__ == '__main__':
-    app.run(host="127.0.0.1", port=80, debug=True, threaded=True, use_reloader=False)
+    """
+        host : 0.0.0.0 
+        - this is a must, cannot be changed to 127.0.0.1 
+        - or it will cannot be accessed after been forwarded by docker to host IP
+        
+        port : 80 (up to you)
+    """
+    app.run(host="0.0.0.0", port=80, debug=True, threaded=True, use_reloader=False)

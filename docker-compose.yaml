@@ -1,29 +1,21 @@
 version: "3"
+
 services:
-  sp_cam:
-    image: sp_cam
-    container_name: sp_cam
-    restart: always
-    networks:
-      net:
-        ipv4_address: 11.22.1.2
   sp_ai:
     image: sp_ai
     container_name: sp_ai
-    restart: always
-    networks:
-      net:
-        ipv4_address: 11.22.1.3
-  sp_iframe:
-    image: sp_iframe
-    container_name: sp_iframe
-    restart: always
-    networks:
-      net:
-        ipv4_address: 11.22.1.4
-networks:
-  net:
-    ipam:
-      driver: default
-      config:
-        - subnet: "11.22.1.0/24"
+
+    volumes:
+      - type: bind
+        source: "/home/valid/PycharmProjects/microservice_smart_prison/PERSISTENT_VOD"
+        target: "/app/vod"
+    ports:
+      - "80:80"
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

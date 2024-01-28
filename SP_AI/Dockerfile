@@ -21,5 +21,5 @@ COPY . .
 
 # YOLO model convert TensorRT
 # Command to run the FastAPI application using Uvicorn
-CMD ["./run.sh"]
+# CMD ["./run.sh"]
 
