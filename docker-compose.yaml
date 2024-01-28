@@ -4,11 +4,6 @@ services:
   sp_ai:
     image: sp_ai
     container_name: sp_ai
-
-    volumes:
-      - type: bind
-        source: "/home/valid/PycharmProjects/microservice_smart_prison/PERSISTENT_VOD"
-        target: "/app/vod"
     ports:
       - "80:80"
     runtime: nvidia
