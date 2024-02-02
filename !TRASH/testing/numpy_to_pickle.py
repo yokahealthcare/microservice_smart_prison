@@ -1,7 +1,7 @@
 import cv2
 import pickle
 
-cap = cv2.VideoCapture("../sample/wallpaper-bishop.jpg")
+cap = cv2.VideoCapture("../../SAMPLE/wallpaper-bishop.jpg")
 ret, frame = cap.read()
 
 # Sender side

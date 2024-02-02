@@ -1,0 +1,43 @@
+version: "3"
+
+services:
+  sp_ai_fight:
+    image: sp_ai_fight
+    container_name: sp_ai_fight
+    volumes:
+      - type: bind
+        source: "/home/valid/PycharmProjects/microservice_smart_prison/SAMPLE"
+        target: "/app/SAMPLE"
+    ports:
+      - "5555:80"
+    networks:
+      - camera1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["0"]
+              capabilities: ["gpu"]
+  sp_vod_fight:
+    image: sp_ai_fight
+    container_name: sp_vod_fight
+    volumes:
+      - type: bind
+        source: "/home/valid/PycharmProjects/microservice_smart_prison/SAMPLE"
+        target: "/app/SAMPLE"
+    ports:
+      - "5556:80"
+    networks:
+      - camera1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["0"]
+              capabilities: ["gpu"]
+networks:
+  camera1:
+    ipam:
+      driver: default

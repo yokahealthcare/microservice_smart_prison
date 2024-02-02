@@ -4,7 +4,7 @@ import base64
 import cv2
 import numpy as np
 
-cap = cv2.VideoCapture("../sample/wallpaper-bishop.jpg")
+cap = cv2.VideoCapture("../../SAMPLE/wallpaper-bishop.jpg")
 ret, frame = cap.read()
 
 _, img_buffer = cv2.imencode('.jpg', frame)
