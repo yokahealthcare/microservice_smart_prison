@@ -39,7 +39,7 @@ def send_frame(frame):
     # Encode image data to base64
     encoded_frame = base64.b64encode(cv2.imencode('.jpg', frame)[1]).decode('utf-8')
 
-    # Send to SP_AI container
+    # Send to SP_AI_FIGHT container
     url = f"http://sp_iframe:8000/receive_frame?encoded_frame={encoded_frame}"
     response = requests.get(url)
 

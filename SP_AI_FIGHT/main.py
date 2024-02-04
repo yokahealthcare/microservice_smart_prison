@@ -9,7 +9,7 @@ from flask import Response
 
 import fight_module
 
-YOLO_MODEL = "model/yolo/yolov8n-pose.pt"
+YOLO_MODEL = "model/yolo/yolov8n-pose.engine"
 FIGHT_MODEL = "model/fight/fight-model.pth"
 
 # initialize the output frame and a lock used to ensure thread-safe

@@ -76,7 +76,7 @@ def json_to_docker_compose(ai_image, vod_image, name, source, gpu_id, port):
                             "devices": [
                                 {
                                     "driver": "nvidia",
-                                    "device_ids": ["0"],
+                                    "device_ids": [f"{gpu_id}"],
                                     "capabilities": ["gpu"]
                                 }
                             ]
