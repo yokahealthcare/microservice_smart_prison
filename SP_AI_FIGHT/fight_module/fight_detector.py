@@ -4,12 +4,13 @@ import torch.nn as nn
 from fight_module.util import *
 
 
+# Define the neural network model
 class ThreeLayerClassifier(nn.Module):
-    def __init__(self, input_size, hidden_size1, output_size):
+    def __init__(self, input_size, hidden_size, output_size):
         super(ThreeLayerClassifier, self).__init__()
-        self.fc1 = nn.Linear(input_size, hidden_size1)
+        self.fc1 = nn.Linear(input_size, hidden_size)
         self.relu1 = nn.ReLU()
-        self.fc3 = nn.Linear(hidden_size1, output_size)
+        self.fc3 = nn.Linear(hidden_size, output_size)
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
@@ -21,7 +22,7 @@ class ThreeLayerClassifier(nn.Module):
 
 
 class FightDetector:
-    def __init__(self, fight_model, fps):
+    def __init__(self, fight_model):
         # Architect the deep learning structure
         self.input_size = 16
         self.hidden_size = 8
@@ -42,13 +43,21 @@ class FightDetector:
             [11, 13, 15]
         ]
 
+        """
+            LAYER OF CORRECT PREDICTION
+            1. MODEL_THRESHOLD          : Dictate how deep learning is sure there is fight on that frame
+            2. CONCLUSION_THRESHOLD     : Dictate how hard the program conclude if a person is in fight action (2 - 4)                            
+            3. FINAL_THRESHOLD          : Dictate how many correct fight detected is allowed for the bell to ring
+        """
+
         # Set up the thresholds
-        self.threshold = 0.8  # Dictate how deep learning is sure there is fight on that frame
-        self.conclusion_threshold = 2  # Dictate how hard the program conclude if a person is in fight action (1 - 3)
-        self.FPS = fps
+        self.model_threshold = 0.9
+        self.conclusion_threshold = 2
+        self.final_threshold = 20
 
         # Event variables
         self.fight_detected = 0
+        self.smoothing_factor = 0.5
 
     def detect(self, conf, xyn):
         input_list = []
@@ -68,29 +77,24 @@ class FightDetector:
                 input_list.append(calculate_angle(c1, c2, c3))
                 # Getting the confs mean of three of those coordinate
                 conf1, conf2, conf3 = conf[first], conf[mid], conf[end]
-                input_list.append(torch.mean(torch.Tensor([conf1, conf2, conf3])).item())
+                input_list.append((conf1 + conf2 + conf3)/3)
 
         if keypoint_unseen:
-            return
+            return None
 
         # Make a prediction
         prediction = self.model(torch.Tensor(input_list))
-        if prediction.item() > self.threshold:
-            # FIGHT
-            # this will grow exponentially according to number of person fighting on scene
-            # if there is two person, and this will be added 2 for each frame
+        print(f"PREDICTION : {prediction.item()}")
+        # Update fight detection using exponential smoothing
+        if prediction.item() > self.model_threshold:
+            # If fight is detected, increase the fight counter
             self.fight_detected += 1
         else:
-            # NO FIGHT
-            # this if statement is for fight_detected not exceed negative value
-            if self.fight_detected > 0:
-                self.fight_detected -= self.conclusion_threshold
-                # this value will decide how hard the program will conclude there is a fight in the frame
-                # the higher the value, the more hard program to conclude
+            # If no fight is detected, decrease the fight counter using exponential smoothing
+            self.fight_detected = self.smoothing_factor * 1 + (1 - self.smoothing_factor) * self.fight_detected
 
-        # Threshold for fight_detected value, when it concludes there is fight on the frame
-        # THRESHOLD = FPS * NUMBER OF PERSON DETECTED
-        if self.fight_detected > self.FPS:
+        # Threshold for concluding a fight
+        if self.fight_detected > self.final_threshold:
             return True
         else:
             return False

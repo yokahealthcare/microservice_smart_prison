@@ -44,31 +44,68 @@ def calculate_iou(box1, box2):
     return iou
 
 
-def calculate_all_ious(bounding_boxes):
-    num_boxes = len(bounding_boxes)
-    ious = []
-
-    for i in range(num_boxes):
-        for j in range(i + 1, num_boxes):
-            ious.append(calculate_iou(bounding_boxes[i], bounding_boxes[j]))
-
-    return ious
+def centroid(box):
+    return [(box[0] + box[2]) / 2, (box[1] + box[3]) / 2]
 
 
-def get_interaction_box(boxes):
+def distance(box1, box2):
+    centroid1 = centroid(box1)
+    centroid2 = centroid(box2)
+    return np.sqrt((centroid1[0] - centroid2[0]) ** 2 + (centroid1[1] - centroid2[1]) ** 2)
+
+
+def group_bounding_boxes(boxes, threshold_iou, threshold_distance):
+    groups = []
+
+    for box in boxes:
+        merged = False
+        for group in groups:
+            for member in group:
+                if calculate_iou(box, member) > threshold_iou:
+                    group.append(box)
+                    merged = True
+                    break
+                elif distance(box, member) < threshold_distance:
+                    group.append(box)
+                    merged = True
+                    break
+            if merged:
+                break
+
+        if not merged:
+            # Check if this box intersects with any existing group,
+            # or if it's close enough to the centroid of any existing group,
+            # if so, merge them
+            new_group = [box]
+            for existing_group in groups:
+                for existing_box in existing_group:
+                    if (calculate_iou(box, existing_box) > threshold_iou) or (
+                            distance(box, existing_box) < threshold_distance):
+                        new_group.extend(existing_group)
+                        groups.remove(existing_group)
+                        break
+                if new_group != [box]:
+                    break
+            groups.append(new_group)
+
+    return groups
+
+
+def get_interaction_box(boxes, xyn, confs, threshold_iou=0, threshold_distance=100):
+    groups = group_bounding_boxes(boxes, threshold_iou, threshold_distance)
     interaction_boxes = []
-    for i, iou in enumerate(calculate_all_ious(boxes)):
-        if iou > 0.1:
-            try:
-                # Create interaction box coordinate
-                interaction_coordinate = [
-                    min(boxes[i][0], boxes[i + 1][0]),  # x1
-                    min(boxes[i][1], boxes[i + 1][1]),  # y1
-                    max(boxes[i][2], boxes[i + 1][2]),  # x2
-                    max(boxes[i][3], boxes[i + 1][3])  # y2
-                ]
-                interaction_boxes.append(interaction_coordinate)
-            except IndexError:
-                pass
-
+    for group in groups:
+        interaction_box = create_interaction_box(group)
+        num_person = len(group)
+        xyn_group = [xyn[i] for i in range(len(xyn)) if boxes[i] in group]
+        conf_group = [confs[i] for i in range(len(confs)) if boxes[i] in group]
+        interaction_boxes.append((interaction_box, num_person, xyn_group, conf_group))
     return interaction_boxes
+
+
+def create_interaction_box(group):
+    min_x = min(box[0] for box in group)
+    min_y = min(box[1] for box in group)
+    max_x = max(box[2] for box in group)
+    max_y = max(box[3] for box in group)
+    return [min_x, min_y, max_x, max_y]

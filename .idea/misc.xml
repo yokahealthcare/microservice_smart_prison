@@ -3,7 +3,7 @@
   <component name="Black">
     <option name="sdkName" value="smart_prison" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="smart_prison" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="sp" project-jdk-type="Python SDK" />
   <component name="PyCharmProfessionalAdvertiser">
     <option name="shown" value="true" />
   </component>

@@ -23,18 +23,26 @@ def is_file_playable(file_path):
     return os.system(command) == 0
 
 
+def move_from_incoming_to_temp_folder():
+    os.system("mv /app/incoming_frame/*.jpg /app/temp_frame")
+
+
 def create_video(input_folder="temp_frame", output_file="default.mp4"):
-    os.system(f"ffmpeg -framerate 20 -pattern_type glob -i '{input_folder}/*.jpg' -c:v libx264 -pix_fmt yuv420p vod/{output_file} -y")
+    # execute moving frame from incoming_folder
+    move_from_incoming_to_temp_folder()
+
+    os.system(
+        f"ffmpeg -framerate 20 -pattern_type glob -i '{input_folder}/*.jpg' -c:v libx264 -pix_fmt yuv420p vod/{output_file} -y")
     print(f"Video created: {output_file}")
 
     # Check output file playable or not
     """
         It is not likely to happen
-        ffmpeg still manage to generate playable video 
+        ffmpeg still manage to generate playable video
     """
     if not is_file_playable(f"vod/{output_file}"):
         # Restart the function create video
-        create_video(output_file)
+        create_video(output_file=output_file)
 
     print("File is OK")
     return True
@@ -58,4 +66,4 @@ if __name__ == '__main__':
     
         port : 80 (up to you)
     """
-    app.run(host="0.0.0.0", port=2121, debug=True, threaded=True, use_reloader=False)
+    app.run(host="0.0.0.0", port=80, debug=True, threaded=True, use_reloader=False)

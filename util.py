@@ -41,6 +41,16 @@ def json_to_docker_compose(ai_image, vod_image, name, source, gpu_id, port):
                         "type": "bind",
                         "source": "/home/valid/PycharmProjects/microservice_smart_prison/SAMPLE",
                         "target": "/app/sample"
+                    },
+                    {
+                        "type": "bind",
+                        "source": "/home/valid/PycharmProjects/microservice_smart_prison/MODEL/FIGHT",
+                        "target": "/app/model/fight"
+                    },
+                    {
+                        "type": "bind",
+                        "source": "/home/valid/PycharmProjects/microservice_smart_prison/MODEL/YOLO",
+                        "target": "/app/model/yolo"
                     }
                 ],
                 "ports": [f"{port}:80"],
