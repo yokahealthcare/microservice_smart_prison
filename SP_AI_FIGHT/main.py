@@ -1,3 +1,4 @@
+import os
 import threading
 import time
 
@@ -6,8 +7,13 @@ import imutils
 import torch
 from flask import Flask, request, redirect
 from flask import Response
+from dotenv import load_dotenv
+import requests
 
 import fight_module
+
+# Load environment variable
+load_dotenv()
 
 # initialize the output frame and a lock used to ensure thread-safe
 # exchanges of the output frames (useful when multiple browsers/tabs
@@ -58,11 +64,11 @@ def detect(video_input):
     # grab global references to the video stream, output frame, and
     # lock variables
     global outputFrame, lock
-    YOLO_MODEL = "model/yolo/yolov8n-pose.engine"
-    FIGHT_MODEL = "model/fight/fight-model.pth"
+    YOLO_MODEL = os.getenv("YOLO_MODEL")
+    FIGHT_MODEL = os.getenv("FIGHT_MODEL")
     FIGHT_ON = False
-    FIGHT_ON_THRESHOLD = 5
-    FIGHT_ON_TIMEOUT = 10  # seconds
+    FIGHT_ON_THRESHOLD = int(os.getenv("FIGHT_ON_THRESHOLD"))
+    FIGHT_ON_TIMEOUT = int(os.getenv("FIGHT_ON_TIMEOUT"))  # seconds
     # Initialize the time when the fight flag was last set
     FIGHT_FLAG_LAST_TIME = None
 
@@ -97,13 +103,15 @@ def detect(video_input):
 
             # Initialize a counter for people inside the interaction box
             for inter_box, num_person, xyn_group, conf_group in interaction_boxes:
-                cv2.rectangle(frame, (int(inter_box[0]), int(inter_box[1])), (int(inter_box[2]), int(inter_box[3])), (0, 255, 0), 2)
+                cv2.rectangle(frame, (int(inter_box[0]), int(inter_box[1])), (int(inter_box[2]), int(inter_box[3])),
+                              (0, 255, 0), 2)
 
                 font = cv2.FONT_HERSHEY_SIMPLEX
                 fontScale = 0.3
                 color = (255, 255, 255)
                 thickness = 1
-                cv2.putText(frame, f"SUBJECT : {num_person}", (int(inter_box[0]) + 10, int(inter_box[3]) - 10), font, fontScale, color, thickness)
+                cv2.putText(frame, f"SUBJECT : {num_person}", (int(inter_box[0]) + 10, int(inter_box[3]) - 10), font,
+                            fontScale, color, thickness)
 
                 if num_person >= 2:
                     both_fighting = []
@@ -111,15 +119,14 @@ def detect(video_input):
                         is_it_fighting = fdet.detect(conf, xyn)
                         both_fighting.append(is_it_fighting)
 
-                    print(f"BOTH FIGHTING: {both_fighting}")
                     if all(both_fighting) and not FIGHT_ON:
+                        # Decrease by 1 if it detected the valid fight
                         FIGHT_ON_THRESHOLD -= 1
-                        print(f"FIGHT ON THRESHOLD: {FIGHT_ON_THRESHOLD}")
                         if FIGHT_ON_THRESHOLD == 0:
                             # Set the fight flag and update the time when it was last set
                             FIGHT_ON = True
                             FIGHT_FLAG_LAST_TIME = time.time()
-                            FIGHT_ON_THRESHOLD = 10
+                            FIGHT_ON_THRESHOLD = int(os.getenv("FIGHT_ON_THRESHOLD"))
 
         except TypeError as te:
             pass
@@ -128,13 +135,20 @@ def detect(video_input):
         # Check if the fight flag was set more than FIGHT_ON_TIMEOUT seconds ago
         if FIGHT_ON and time.time() - FIGHT_FLAG_LAST_TIME > FIGHT_ON_TIMEOUT:
             FIGHT_ON = False
+            # Start process on VOD container
+            url = 'http://data/'
+            response = requests.get(url)
 
         # RING THE ALARM
         if FIGHT_ON:
             cv2.putText(frame, "FIGHTING", (0, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2, cv2.LINE_AA)
 
             countdown = FIGHT_ON_TIMEOUT - int(time.time() - FIGHT_FLAG_LAST_TIME)
-            cv2.putText(frame, f"{countdown} seconds to alarm termination", (0, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5,(0, 0, 0), 1, cv2.LINE_AA)
+            cv2.putText(frame, f"{countdown} seconds to alarm termination", (0, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                        (0, 0, 0), 1, cv2.LINE_AA)
+
+            # Write to outgoing_frame folder
+            cv2.imwrite("outgoing_frame/", frame)
 
         # acquire the lock, set the output frame, and release the lock
         with lock:

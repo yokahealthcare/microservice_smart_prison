@@ -12,8 +12,8 @@ def index():
 
 
 @app.get("/add_camera")
-def add_camera(name: str, source: str, fight_engine: bool, pray_engine: bool, city: str, gpu: int, port: int):
-    if util.create_camera(name, source, fight_engine, pray_engine, city, gpu, port):
+def add_camera(name: str, source: str, fight_engine: bool, pray_engine: bool, city: str, gpu_id: int, port: int):
+    if util.create_camera(name, source, fight_engine, pray_engine, city, gpu_id, port):
         return "OK"
     else:
         return "FAILED"

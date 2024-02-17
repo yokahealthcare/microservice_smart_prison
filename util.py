@@ -1,9 +1,44 @@
 import os
 
 import yaml
+import subprocess
 import json
 
 folder_path = "ALL_DOCKER_COMPOSE"
+
+
+def get_docker_subnets():
+    # Get a list of Docker network names
+    network_names = subprocess.check_output(
+        ["sudo", "docker", "network", "ls", "--format", "{{.Name}}"]).decode().splitlines()
+
+    # Initialize an empty dictionary to store network names and their subnets
+    network_subnets = {}
+
+    for name in network_names:
+        # Get network details in JSON format
+        network_info = subprocess.check_output(["sudo", "docker", "network", "inspect", name]).decode()
+        network_data = json.loads(network_info)
+
+        driver = network_data[0]["Driver"]
+        if driver == "bridge":
+            # Extract the subnet information
+            subnet = network_data[0]["IPAM"]["Config"][0]["Subnet"]
+            network_subnets[name] = subnet
+
+    return network_subnets
+
+
+def allocate_available_subnet(docker_subnets):
+    n2d = 17
+    choosen_subnet = f"172.{n2d}.0.0/16"
+
+    for i in range(17, 256):
+        if choosen_subnet not in docker_subnets.values():
+            break
+        n2d += 1
+        choosen_subnet = f"172.{n2d}.0.0/16"
+    return choosen_subnet
 
 
 def create_camera(name, source, fight_engine, pray_engine, city, gpu_id, port):
@@ -12,24 +47,27 @@ def create_camera(name, source, fight_engine, pray_engine, city, gpu_id, port):
     vod_image = None
     if fight_engine:
         ai_image = "sp_ai_fight"
-        vod_image = "sp_ai_fight"
+        vod_image = "sp_ai_fight"  # later change
     elif pray_engine:
         ai_image = "sp_ai_pray"
-        vod_image = "sp_ai_pray"
+        vod_image = "sp_ai_pray"  # later change
 
     try:
         # Create docker-compose.yaml for camera
         if json_to_docker_compose(ai_image, vod_image, name, source, gpu_id, port):
             # Execute docker-compose.yaml
-            os.system(f"sudo docker-compose -f {folder_path}/{name}-docker-compose.yaml up -d")
-            return True
+            os.system(f"sudo docker compose -f {folder_path}/{name}-docker-compose.yaml up -d")
+            return True, "Successfully created camera and running"
 
-        return False
+        return False, "Failed to create docker compose"
     except:
-        return False
+        return False, "Caught exception"
 
 
 def json_to_docker_compose(ai_image, vod_image, name, source, gpu_id, port):
+    # Select subnet
+    subnet = allocate_available_subnet(get_docker_subnets())
+
     docker_compose_json = {
         "version": "3",
         "services": {
@@ -39,22 +77,26 @@ def json_to_docker_compose(ai_image, vod_image, name, source, gpu_id, port):
                 "volumes": [
                     {
                         "type": "bind",
-                        "source": "/home/valid/PycharmProjects/microservice_smart_prison/SAMPLE",
+                        "source": "/home/erwinyonata/PycharmProjects/microservice_smart_prison/SAMPLE",
                         "target": "/app/sample"
                     },
                     {
                         "type": "bind",
-                        "source": "/home/valid/PycharmProjects/microservice_smart_prison/MODEL/FIGHT",
+                        "source": "/home/erwinyonata/PycharmProjects/microservice_smart_prison/MODEL/FIGHT",
                         "target": "/app/model/fight"
                     },
                     {
                         "type": "bind",
-                        "source": "/home/valid/PycharmProjects/microservice_smart_prison/MODEL/YOLO",
+                        "source": "/home/erwinyonata/PycharmProjects/microservice_smart_prison/MODEL/YOLO",
                         "target": "/app/model/yolo"
                     }
                 ],
                 "ports": [f"{port}:80"],
-                "networks": [f"{name}"],
+                "networks": {
+                    f"{name}": {
+                        "ipv4_address": f"{'.'.join(subnet.split('.')[:-1])}.2"
+                    }
+                },
                 "deploy": {
                     "resources": {
                         "reservations": {
@@ -75,30 +117,29 @@ def json_to_docker_compose(ai_image, vod_image, name, source, gpu_id, port):
                 "volumes": [
                     {
                         "type": "bind",
-                        "source": "/home/valid/PycharmProjects/microservice_smart_prison/PERSISTENT_VOD",
+                        "source": "/home/erwinyonata/PycharmProjects/microservice_smart_prison/PERSISTENT_VOD",
                         "target": "/app/vod"
                     }
                 ],
-                "networks": [f"{name}"],
-                "deploy": {
-                    "resources": {
-                        "reservations": {
-                            "devices": [
-                                {
-                                    "driver": "nvidia",
-                                    "device_ids": [f"{gpu_id}"],
-                                    "capabilities": ["gpu"]
-                                }
-                            ]
-                        }
+                "networks": {
+                    f"{name}": {
+                        "ipv4_address": f"{'.'.join(subnet.split('.')[:-1])}.3"
                     }
                 }
             }
         },
+        "volumes": {
+            f"{name}_volume": {}
+        },
         "networks": {
             f"{name}": {
                 "ipam": {
-                    "driver": "default"
+                    "driver": "default",
+                    "config": [
+                        {
+                            "subnet": subnet
+                        }
+                    ]
                 }
             }
         }
@@ -107,30 +148,30 @@ def json_to_docker_compose(ai_image, vod_image, name, source, gpu_id, port):
     try:
         with open(f'{folder_path}/{name}-docker-compose.yaml', 'w') as yaml_file:
             yaml.dump(docker_compose_json, yaml_file, default_flow_style=False)
-        return True
+        return True, "Success creating docker-compose.yaml"
     except:
-        return False
+        return False, "Failed to create docker-compose.yaml"
 
 
 def delete_camera(camera_name):
     for filename in os.listdir(folder_path):
-        if camera_name == filename.split("-")[0]:
-            os.system(f"sudo docker-compose -f {folder_path}/{filename} down")
+        if filename.endswith(".yaml") and camera_name == filename.split("-")[0]:
+            os.system(f"sudo docker compose -f {folder_path}/{filename} down")
             os.system(f"rm {folder_path}/{filename}")
-            return True
+            return True, "Success deleting camera"
     else:
-        return False
+        return False, "Camera does not exist"
 
 
 def delete_all_camera():
     try:
         for filename in os.listdir(folder_path):
-            os.system(f"sudo docker-compose -f {folder_path}/{filename} down")
-            os.system(f"rm {folder_path}/{filename}")
-        else:
-            return True
-    except:
-        return False
+            if filename.endswith(".yaml"):
+                os.system(f"sudo docker compose -f {folder_path}/{filename} down")
+                os.system(f"rm {folder_path}/{filename}")
+        return True, "All camera configurations deleted"
+    except Exception as e:
+        return False, f"An error occurred: {str(e)}"
 
 
 def extract_yaml_to_json(filename):
@@ -164,3 +205,17 @@ def get_info_all_camera():
             return True, list_camera_info
     except:
         return False, None
+
+
+if __name__ == '__main__':
+    name = "camera4"
+    source = "a"
+    fight_engine = True
+    pray_engine = False
+    city = "San Francisco"
+    gpu_id = 0
+    port = 5558
+
+    response, message = create_camera(name, source, fight_engine, pray_engine, city, gpu_id, port)
+    print(response)
+    print(message)

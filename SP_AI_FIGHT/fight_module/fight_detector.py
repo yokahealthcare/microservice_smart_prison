@@ -1,3 +1,5 @@
+import os
+
 import torch
 import torch.nn as nn
 
@@ -51,9 +53,9 @@ class FightDetector:
         """
 
         # Set up the thresholds
-        self.model_threshold = 0.9
-        self.conclusion_threshold = 2
-        self.final_threshold = 20
+        self.model_threshold = float(os.getenv("FIGHT_MODEL_THRESHOLD"))
+        self.conclusion_threshold = int(os.getenv("FIGHT_CONCLUSION_THRESHOLD"))
+        self.final_threshold = int(os.getenv("FIGHT_FINAL_THRESHOLD"))
 
         # Event variables
         self.fight_detected = 0
